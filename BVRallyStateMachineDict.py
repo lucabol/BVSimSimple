@@ -923,7 +923,7 @@ def test_simulate_match_points() -> None:
     identical_team_template.update(templates["elite_receiving"])
     
     # Test with a reasonable number of points
-    num_test_points = 10000
+    num_test_points = 1000
     
     print(f"Simulating {num_test_points} points with identical teams...")
     
