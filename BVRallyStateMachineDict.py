@@ -807,6 +807,191 @@ def print_state_machine_summary(state_machine: RallyStateMachine) -> None:
         print(f"  {state_machine.initial_state} -> {next_state} (p={probability}, {action_type})")
 
 
+def simulate_match_points(
+    team_a_template: Dict[str, List[Tuple[str, Decimal]]], 
+    team_b_template: Dict[str, List[Tuple[str, Decimal]]], 
+    num_points: int
+) -> float:
+    """Simulate a specified number of points alternating serving teams.
+    
+    This function simulates a match by playing the specified number of points,
+    alternating which team serves for each point. Team A serves on odd-numbered
+    points (1, 3, 5, ...) and Team B serves on even-numbered points (2, 4, 6, ...).
+    
+    Args:
+        team_a_template: Probability template for team A (must contain both s_ and r_ states)
+        team_b_template: Probability template for team B (must contain both s_ and r_ states)
+        num_points: Total number of points to simulate
+        
+    Returns:
+        Percentage of points won by team A (float between 0.0 and 100.0)
+        
+    Raises:
+        ValueError: If num_points is not positive or templates are invalid
+        
+    Example:
+        >>> templates = get_common_state_templates()
+        >>> team_a_probs = templates["elite_serving"].copy()
+        >>> team_a_probs.update(templates["elite_receiving"])
+        >>> team_b_probs = templates["novice_serving"].copy()
+        >>> team_b_probs.update(templates["novice_receiving"])
+        >>> win_percentage = simulate_match_points(team_a_probs, team_b_probs, 100)
+        >>> print(f"Team A won {win_percentage:.1f}% of points")
+    """
+    if num_points <= 0:
+        raise ValueError("Number of points must be positive")
+    
+    # Helper function to separate serving and receiving states from a team template
+    def separate_team_states(team_template: Dict[str, List[Tuple[str, Decimal]]]) -> Tuple[
+        Dict[str, List[Tuple[str, Decimal]]], 
+        Dict[str, List[Tuple[str, Decimal]]]
+    ]:
+        """Separate a team template into serving (s_) and receiving (r_) states."""
+        serving_states = {}
+        receiving_states = {}
+        
+        for state, transitions in team_template.items():
+            if state.startswith('s_'):
+                serving_states[state] = transitions
+            elif state.startswith('r_'):
+                receiving_states[state] = transitions
+        
+        return serving_states, receiving_states
+    
+    # Separate team templates into serving and receiving components
+    team_a_serving, team_a_receiving = separate_team_states(team_a_template)
+    team_b_serving, team_b_receiving = separate_team_states(team_b_template)
+    
+    team_a_wins = 0
+    
+    for point_num in range(1, num_points + 1):
+        # Determine which team serves (Team A serves on odd points, Team B on even)
+        team_a_serves = (point_num % 2 == 1)
+        
+        if team_a_serves:
+            # Team A serves, Team B receives
+            serving_template = team_a_serving
+            receiving_template = team_b_receiving
+        else:
+            # Team B serves, Team A receives
+            serving_template = team_b_serving
+            receiving_template = team_a_receiving
+        
+        # Create state machine for this point
+        try:
+            point_sm = create_state_machine_from_teams(serving_template, receiving_template)
+        except ValueError as e:
+            raise ValueError(f"Failed to create state machine for point {point_num}: {e}")
+        
+        # Simulate the rally
+        try:
+            rally_sequence, outcome = simulate_complete_rally(point_sm)
+        except RuntimeError as e:
+            raise RuntimeError(f"Rally simulation failed for point {point_num}: {e}")
+        
+        # Determine who won this point
+        if "serving team wins" in outcome:
+            if team_a_serves:
+                team_a_wins += 1
+            # If Team B serves and serving team wins, Team A doesn't get the point
+        elif "receiving team wins" in outcome:
+            if not team_a_serves:
+                team_a_wins += 1
+            # If Team A serves and receiving team wins, Team A doesn't get the point
+        # Note: If rally doesn't complete (very rare), neither team gets the point
+    
+    # Calculate and return percentage
+    win_percentage = (team_a_wins / num_points) * 100.0
+    return win_percentage
+
+
+def test_simulate_match_points() -> None:
+    """Test the simulate_match_points function with identical teams.
+    
+    This test verifies that when two identical teams play against each other,
+    the win percentage should be approximately 50% for each team, demonstrating
+    that the simulation is fair and unbiased.
+    """
+    print("\nTesting simulate_match_points function:")
+    print("=" * 45)
+    
+    # Get common templates
+    templates = get_common_state_templates()
+    
+    # Create identical team templates by combining serving and receiving probabilities
+    identical_team_template = templates["elite_serving"].copy()
+    identical_team_template.update(templates["elite_receiving"])
+    
+    # Test with a reasonable number of points
+    num_test_points = 10000
+    
+    print(f"Simulating {num_test_points} points with identical teams...")
+    
+    try:
+        win_percentage = simulate_match_points(
+            identical_team_template, 
+            identical_team_template, 
+            num_test_points
+        )
+        
+        print(f"Team A won {win_percentage:.1f}% of points")
+        print(f"Team B won {100 - win_percentage:.1f}% of points")
+        
+        # Check if the result is reasonably close to 50%
+        # With 1000 points, we expect roughly 50% ± 3% due to random variation
+        if 47.0 <= win_percentage <= 53.0:
+            print("+ Test PASSED: Win percentage is close to 50% as expected for identical teams")
+        else:
+            print(f"! Test WARNING: Win percentage {win_percentage:.1f}% is outside expected range (47-53%)")
+            print("  This could be due to random variation or may indicate an issue")
+        
+        # Additional test with different templates to show the function works
+        print(f"\nTesting with different team skill levels:")
+        elite_team = templates["elite_serving"].copy()
+        elite_team.update(templates["elite_receiving"])
+        
+        novice_team = templates["novice_serving"].copy()
+        novice_team.update(templates["novice_receiving"])
+        
+        elite_vs_novice_percentage = simulate_match_points(
+            elite_team, 
+            novice_team, 
+            500  # Fewer points for faster execution
+        )
+        
+        print(f"Elite team (A) vs Novice team (B) over 500 points:")
+        print(f"  Elite team won {elite_vs_novice_percentage:.1f}% of points")
+        print(f"  Novice team won {100 - elite_vs_novice_percentage:.1f}% of points")
+        
+        if elite_vs_novice_percentage > 55.0:
+            print("+ Elite team has higher win rate as expected")
+        else:
+            print("! Elite team win rate is lower than expected")
+            
+    except Exception as e:
+        print(f"- Test FAILED: {e}")
+        return
+    
+    # Test error handling
+    print(f"\nTesting error handling:")
+    
+    try:
+        # Test with invalid number of points
+        simulate_match_points(identical_team_template, identical_team_template, 0)
+        print("- Should have caught invalid number of points")
+    except ValueError:
+        print("+ Correctly caught invalid number of points")
+    
+    try:
+        # Test with empty template
+        simulate_match_points({}, identical_team_template, 10)
+        print("- Should have caught empty template")
+    except ValueError:
+        print("+ Correctly caught invalid template")
+    
+    print("simulate_match_points function testing complete!")
+
+
 def run_comprehensive_tests() -> None:
     """Run comprehensive tests and examples for the beach volleyball state machine.
     
@@ -948,7 +1133,7 @@ def run_comprehensive_tests() -> None:
             example_receiving_probs
         )
         
-        print("✓ Custom state machine created successfully!")
+        print("+ Custom state machine created successfully!")
         print(f"  Total states: {len(custom_sm.get_all_states())}")
         print(f"  Validation passed: {custom_sm.validate_probabilities()}")
         
@@ -977,7 +1162,7 @@ def run_comprehensive_tests() -> None:
         print(f"  First 5 states: {' -> '.join(custom_rally[:5])}")
         
     except ValueError as e:
-        print(f"✗ Error creating custom state machine: {e}")
+        print(f"- Error creating custom state machine: {e}")
     
     # Test error handling with invalid probabilities
     print(f"\nTesting error handling:")
@@ -994,9 +1179,9 @@ def run_comprehensive_tests() -> None:
     
     try:
         create_state_machine_from_teams(invalid_serving_probs, {})
-        print("✗ Should have caught invalid probabilities")
+        print("- Should have caught invalid probabilities")
     except ValueError as e:
-        print(f"✓ Correctly caught invalid probabilities: {str(e)[:80]}...")
+        print(f"+ Correctly caught invalid probabilities: {str(e)[:80]}...")
     
     # Test case 2: Invalid state name (doesn't start with s_ or r_)
     invalid_state_name = {
@@ -1007,9 +1192,9 @@ def run_comprehensive_tests() -> None:
     
     try:
         create_state_machine_from_teams(invalid_state_name, {})
-        print("✗ Should have caught invalid state name")
+        print("- Should have caught invalid state name")
     except ValueError as e:
-        print(f"✓ Correctly caught invalid state name: {str(e)[:80]}...")
+        print(f"+ Correctly caught invalid state name: {str(e)[:80]}...")
     
     # Test the template system
     print(f"\nTesting Common State Templates:")
@@ -1024,7 +1209,7 @@ def run_comprehensive_tests() -> None:
             templates["elite_serving"],
             templates["novice_receiving"]
         )
-        print(f"✓ Elite vs Novice state machine created successfully!")
+        print(f"+ Elite vs Novice state machine created successfully!")
         
         # Run a quick comparison simulation
         elite_rally, elite_outcome = simulate_complete_rally(elite_vs_novice_sm)
@@ -1039,9 +1224,12 @@ def run_comprehensive_tests() -> None:
         print(f"  Power vs Defense rally: {len(power_rally)} steps, {power_outcome}")
         
     except Exception as e:
-        print(f"✗ Template test failed: {e}")
+        print(f"- Template test failed: {e}")
     
     print(f"\nCustom team probabilities function testing complete!")
+    
+    # Test the new simulate_match_points function
+    test_simulate_match_points()
 
 
 # Example usage and entry point
