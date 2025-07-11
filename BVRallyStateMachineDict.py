@@ -431,10 +431,10 @@ def get_winning_team(terminal_state: str) -> str:
 
 
 def simulate_rally_step(state_machine: RallyStateMachine, current_state: str) -> Optional[str]:
-    """Simulate one step of the rally using the highest probability transition.
+    """Simulate one step of the rally using weighted random selection based on probabilities.
     
-    This is a simplified simulation that always chooses the most likely next state.
-    In a real simulation, you would use random sampling based on probabilities.
+    This function uses the transition probabilities to randomly select the next state,
+    making the simulation more realistic and varied.
     
     Args:
         state_machine: The rally state machine
@@ -446,6 +446,8 @@ def simulate_rally_step(state_machine: RallyStateMachine, current_state: str) ->
     Raises:
         ValueError: If current_state is invalid
     """
+    import random
+    
     if state_machine.is_terminal_state(current_state):
         return None
     
@@ -453,9 +455,51 @@ def simulate_rally_step(state_machine: RallyStateMachine, current_state: str) ->
     if not transitions:
         return None
     
-    # Choose the transition with highest probability
-    best_transition = max(transitions, key=lambda x: x[1])
-    return best_transition[0]
+    # Extract states and probabilities for weighted random selection
+    states = [transition[0] for transition in transitions]
+    probabilities = [float(transition[1]) for transition in transitions]
+    
+    # Use weighted random choice based on probabilities
+    selected_state = random.choices(states, weights=probabilities, k=1)[0]
+    return selected_state
+
+
+def simulate_complete_rally(state_machine: RallyStateMachine, max_steps: int = 50) -> Tuple[List[str], str]:
+    """Simulate a complete rally from start to finish.
+    
+    Args:
+        state_machine: The rally state machine
+        max_steps: Maximum number of steps to prevent infinite loops
+        
+    Returns:
+        Tuple of (list of states in the rally, final outcome)
+        
+    Raises:
+        RuntimeError: If rally doesn't terminate within max_steps
+    """
+    rally_sequence = []
+    current_state = state_machine.initial_state
+    step = 0
+    
+    while not state_machine.is_terminal_state(current_state) and step < max_steps:
+        rally_sequence.append(current_state)
+        next_state = simulate_rally_step(state_machine, current_state)
+        
+        if next_state is None:
+            break
+            
+        current_state = next_state
+        step += 1
+    
+    # Add the final terminal state
+    if state_machine.is_terminal_state(current_state):
+        rally_sequence.append(current_state)
+        winner = get_winning_team(current_state)
+        outcome = f"{winner} team wins"
+    else:
+        outcome = f"Rally exceeded {max_steps} steps"
+    
+    return rally_sequence, outcome
 
 
 def print_state_machine_summary(state_machine: RallyStateMachine) -> None:
@@ -514,9 +558,9 @@ if __name__ == "__main__":
     print(f"Valid transition {current_state} -> {valid_next}: {rally_sm.is_valid_transition(current_state, valid_next)}")
     print(f"Invalid transition {current_state} -> {invalid_next}: {rally_sm.is_valid_transition(current_state, invalid_next)}")
     
-    # Simulate a few rally steps
-    print(f"\nSimulated Rally Steps:")
-    print("=" * 25)
+    # Simulate a few rally steps with probability-based selection
+    print(f"\nSimulated Rally Steps (Probability-Based):")
+    print("=" * 45)
     
     rally_state = rally_sm.initial_state
     step = 0
@@ -538,6 +582,31 @@ if __name__ == "__main__":
         print(f"Winner: {winner} team")
     elif step >= 10:
         print(f"\nRally simulation stopped after {step} steps (still in progress)")
+    
+    # Simulate multiple complete rallies
+    print(f"\nComplete Rally Simulations:")
+    print("=" * 30)
+    
+    serving_wins = 0
+    receiving_wins = 0
+    num_simulations = 5
+    
+    for i in range(num_simulations):
+        rally_sequence, outcome = simulate_complete_rally(rally_sm)
+        print(f"\nRally {i + 1}:")
+        print(f"  Length: {len(rally_sequence)} steps")
+        print(f"  Outcome: {outcome}")
+        print(f"  Sequence: {' -> '.join(rally_sequence[:8])}{'...' if len(rally_sequence) > 8 else ''}")
+        
+        if "serving team wins" in outcome:
+            serving_wins += 1
+        elif "receiving team wins" in outcome:
+            receiving_wins += 1
+    
+    print(f"\nSimulation Summary ({num_simulations} rallies):")
+    print(f"  Serving team wins: {serving_wins}")
+    print(f"  Receiving team wins: {receiving_wins}")
+    print(f"  Win rate - Serving: {serving_wins/num_simulations:.1%}, Receiving: {receiving_wins/num_simulations:.1%}")
     
     # Test state machine validation
     print(f"\nValidation Results:")
