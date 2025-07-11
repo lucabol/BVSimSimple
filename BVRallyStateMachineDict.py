@@ -807,8 +807,13 @@ def print_state_machine_summary(state_machine: RallyStateMachine) -> None:
         print(f"  {state_machine.initial_state} -> {next_state} (p={probability}, {action_type})")
 
 
-# Example usage and testing
-if __name__ == "__main__":
+def run_comprehensive_tests() -> None:
+    """Run comprehensive tests and examples for the beach volleyball state machine.
+    
+    This function contains all the testing and demonstration code that was previously
+    in the __main__ block. It performs functionality tests, simulations, and validation
+    of the state machine implementation.
+    """
     # Create the state machine
     rally_sm = create_beach_volleyball_state_machine()
     
@@ -1037,3 +1042,56 @@ if __name__ == "__main__":
         print(f"✗ Template test failed: {e}")
     
     print(f"\nCustom team probabilities function testing complete!")
+
+
+# Example usage and entry point
+if __name__ == "__main__":
+    import argparse
+    
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description="Beach Volleyball Rally State Machine - Dictionary Representation",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python BVRallyStateMachineDict.py --test    # Run comprehensive tests
+  python BVRallyStateMachineDict.py           # Show basic usage information
+        """
+    )
+    
+    parser.add_argument(
+        '--test',
+        action='store_true',
+        help='Run comprehensive tests and demonstrations of the state machine'
+    )
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    if args.test:
+        # Run the comprehensive test suite
+        run_comprehensive_tests()
+    else:
+        # Show basic usage information
+        print("Beach Volleyball Rally State Machine - Dictionary Representation")
+        print("=" * 65)
+        print("This module provides a functional approach to modeling beach volleyball")
+        print("rally states using a dictionary-based representation.")
+        print()
+        print("Basic usage:")
+        print("  from BVRallyStateMachineDict import create_beach_volleyball_state_machine")
+        print("  sm = create_beach_volleyball_state_machine()")
+        print("  rally_sequence, outcome = simulate_complete_rally(sm)")
+        print()
+        print("Available functions:")
+        print("  - create_beach_volleyball_state_machine(): Create default state machine")
+        print("  - create_state_machine_from_teams(): Create custom state machine")
+        print("  - get_common_state_templates(): Get predefined probability templates")
+        print("  - simulate_rally_step(): Simulate one rally step")
+        print("  - simulate_complete_rally(): Simulate a complete rally")
+        print("  - get_winning_team(): Determine winner from terminal state")
+        print()
+        print("For comprehensive tests and examples, run:")
+        print("  python BVRallyStateMachineDict.py --test")
+        print()
+        print("Module imported successfully! Use the functions above in your code.")
