@@ -165,6 +165,286 @@ class RallyStateMachine:
         return True
 
 
+def create_state_machine_from_teams(
+    team_serving_probs: Dict[str, List[Tuple[str, Decimal]]], 
+    team_receiving_probs: Dict[str, List[Tuple[str, Decimal]]]
+) -> RallyStateMachine:
+    """Create a custom state machine from team-specific probability dictionaries.
+    
+    This function creates a rally state machine using custom probabilities for each team.
+    The probabilities are provided as dictionaries where each state maps to a list of
+    possible transitions with their probabilities.
+    
+    Args:
+        team_serving_probs: Dictionary of serving team state transitions.
+            Format: {"state_name": [("next_state", Decimal("probability")), ...]}
+        team_receiving_probs: Dictionary of receiving team state transitions.
+            Format: {"state_name": [("next_state", Decimal("probability")), ...]}
+    
+    Returns:
+        RallyStateMachine instance with custom team probabilities
+        
+    Raises:
+        ValueError: If probability dictionaries are malformed or probabilities don't sum to 1.0
+        
+    Example:
+        >>> serving_probs = {
+        ...     "s_serve_ready": [
+        ...         ("s_serve_ace", Decimal("0.08")),
+        ...         ("s_serve_error", Decimal("0.12")),
+        ...         ("s_serve_in_play", Decimal("0.80"))
+        ...     ]
+        ... }
+        >>> receiving_probs = {
+        ...     "r_reception_perfect": [
+        ...         ("r_set_perfect", Decimal("0.80")),
+        ...         ("r_set_good", Decimal("0.15")),
+        ...         ("r_set_error", Decimal("0.05"))
+        ...     ]
+        ... }
+        >>> sm = create_state_machine_from_teams(serving_probs, receiving_probs)
+    """
+    # Start with the default state machine structure
+    default_sm = create_beach_volleyball_state_machine()
+    
+    # Create a copy of the default transitions
+    custom_transitions: Dict[str, List[StateTransitionTuple]] = {}
+    
+    # Helper function to infer action type from state name
+    def infer_action_type(state_name: str) -> ActionType:
+        """Infer the action type from the state name."""
+        if 'serve' in state_name:
+            return ActionType.SERVE
+        elif 'reception' in state_name:
+            return ActionType.RECEPTION
+        elif 'set' in state_name:
+            return ActionType.SET
+        elif 'attack' in state_name:
+            return ActionType.ATTACK
+        elif 'dig' in state_name:
+            return ActionType.DIG
+        elif 'block' in state_name:
+            return ActionType.BLOCK
+        elif 'transition' in state_name:
+            return ActionType.TRANSITION
+        else:
+            return ActionType.TRANSITION  # Default fallback
+    
+    # Helper function to validate probabilities sum to 1.0
+    def validate_state_probabilities(state: str, transitions: List[Tuple[str, Decimal]]) -> None:
+        """Validate that probabilities for a state sum to 1.0."""
+        total_prob = sum(prob for _, prob in transitions)
+        if abs(total_prob - Decimal("1.0")) > Decimal("0.001"):
+            raise ValueError(
+                f"Probabilities for state '{state}' sum to {total_prob}, not 1.0. "
+                f"Transitions: {transitions}"
+            )
+    
+    # Process serving team probabilities
+    for state, prob_transitions in team_serving_probs.items():
+        if not state.startswith('s_'):
+            raise ValueError(f"Serving team state '{state}' must start with 's_'")
+        
+        # Validate probabilities
+        validate_state_probabilities(state, prob_transitions)
+        
+        # Convert to StateTransitionTuple format
+        state_transitions = []
+        for next_state, probability in prob_transitions:
+            action_type = infer_action_type(next_state)
+            state_transitions.append((next_state, probability, action_type))
+        
+        custom_transitions[state] = state_transitions
+    
+    # Process receiving team probabilities
+    for state, prob_transitions in team_receiving_probs.items():
+        if not state.startswith('r_'):
+            raise ValueError(f"Receiving team state '{state}' must start with 'r_'")
+        
+        # Validate probabilities
+        validate_state_probabilities(state, prob_transitions)
+        
+        # Convert to StateTransitionTuple format
+        state_transitions = []
+        for next_state, probability in prob_transitions:
+            action_type = infer_action_type(next_state)
+            state_transitions.append((next_state, probability, action_type))
+        
+        custom_transitions[state] = state_transitions
+    
+    # For any states not provided in custom dictionaries, use default probabilities
+    for state, transitions in default_sm.transitions.items():
+        if state not in custom_transitions:
+            custom_transitions[state] = transitions
+    
+    # Verify that all referenced states in transitions exist
+    all_referenced_states = set()
+    for state, transitions in custom_transitions.items():
+        all_referenced_states.add(state)
+        for next_state, _, _ in transitions:
+            all_referenced_states.add(next_state)
+    
+    # Check for missing transition definitions
+    missing_states = []
+    for state in all_referenced_states:
+        if (state not in custom_transitions and 
+            state not in default_sm.terminal_states and 
+            state not in default_sm.transitions):
+            missing_states.append(state)
+    
+    if missing_states:
+        raise ValueError(
+            f"Referenced states missing transition definitions: {missing_states}. "
+            f"These states are referenced in transitions but have no outgoing transitions defined."
+        )
+    
+    return RallyStateMachine(
+        transitions=custom_transitions,
+        terminal_states=default_sm.terminal_states,
+        initial_state=default_sm.initial_state
+    )
+
+
+def get_common_state_templates() -> Dict[str, Dict[str, List[Tuple[str, Decimal]]]]:
+    """Get common probability templates for different team skill levels.
+    
+    This function provides pre-defined probability templates that can be used as starting
+    points for creating custom state machines. The templates represent different skill levels
+    and playing styles.
+    
+    Returns:
+        Dictionary with template names as keys and probability dictionaries as values
+        
+    Example:
+        >>> templates = get_common_state_templates()
+        >>> elite_serving = templates["elite_serving"]
+        >>> novice_receiving = templates["novice_receiving"]
+        >>> sm = create_state_machine_from_teams(elite_serving, novice_receiving)
+    """
+    
+    templates = {
+        # Elite level serving team - high ace rate, low error rate
+        "elite_serving": {
+            "s_serve_ready": [
+                ("s_serve_ace", Decimal("0.12")),      # High ace rate
+                ("s_serve_error", Decimal("0.05")),    # Low error rate
+                ("s_serve_in_play", Decimal("0.83"))
+            ],
+            "s_set_perfect": [
+                ("s_attack_kill", Decimal("0.45")),    # Very high kill rate
+                ("s_attack_in_play", Decimal("0.40")),
+                ("s_attack_error", Decimal("0.05")),   # Low error rate
+                ("s_attack_blocked", Decimal("0.10"))
+            ],
+            "s_set_good": [
+                ("s_attack_kill", Decimal("0.35")),    # High kill rate
+                ("s_attack_in_play", Decimal("0.50")),
+                ("s_attack_error", Decimal("0.05")),
+                ("s_attack_blocked", Decimal("0.10"))
+            ]
+        },
+        
+        # Elite level receiving team - consistent and powerful
+        "elite_receiving": {
+            "r_reception_perfect": [
+                ("r_set_perfect", Decimal("0.85")),    # Very high perfect set rate
+                ("r_set_good", Decimal("0.12")),
+                ("r_set_error", Decimal("0.03"))       # Very low error rate
+            ],
+            "r_reception_good": [
+                ("r_set_perfect", Decimal("0.55")),    # Good conversion to perfect sets
+                ("r_set_good", Decimal("0.35")),
+                ("r_set_poor", Decimal("0.07")),
+                ("r_set_error", Decimal("0.03"))
+            ],
+            "r_set_perfect": [
+                ("r_attack_kill", Decimal("0.45")),    # Very high kill rate
+                ("r_attack_in_play", Decimal("0.40")),
+                ("r_attack_error", Decimal("0.05")),
+                ("r_attack_blocked", Decimal("0.10"))
+            ]
+        },
+        
+        # Novice serving team - lower skill, higher errors
+        "novice_serving": {
+            "s_serve_ready": [
+                ("s_serve_ace", Decimal("0.02")),      # Low ace rate
+                ("s_serve_error", Decimal("0.18")),    # High error rate
+                ("s_serve_in_play", Decimal("0.80"))
+            ],
+            "s_set_perfect": [
+                ("s_attack_kill", Decimal("0.20")),    # Lower kill rate
+                ("s_attack_in_play", Decimal("0.50")),
+                ("s_attack_error", Decimal("0.15")),   # Higher error rate
+                ("s_attack_blocked", Decimal("0.15"))
+            ],
+            "s_set_good": [
+                ("s_attack_kill", Decimal("0.15")),
+                ("s_attack_in_play", Decimal("0.50")),
+                ("s_attack_error", Decimal("0.20")),
+                ("s_attack_blocked", Decimal("0.15"))
+            ]
+        },
+        
+        # Novice receiving team - inconsistent reception and setting
+        "novice_receiving": {
+            "r_reception_perfect": [
+                ("r_set_perfect", Decimal("0.50")),    # Lower perfect set rate
+                ("r_set_good", Decimal("0.35")),
+                ("r_set_error", Decimal("0.15"))       # Higher error rate
+            ],
+            "r_reception_good": [
+                ("r_set_perfect", Decimal("0.25")),
+                ("r_set_good", Decimal("0.40")),
+                ("r_set_poor", Decimal("0.25")),
+                ("r_set_error", Decimal("0.10"))
+            ],
+            "r_set_perfect": [
+                ("r_attack_kill", Decimal("0.20")),    # Lower kill rate
+                ("r_attack_in_play", Decimal("0.50")),
+                ("r_attack_error", Decimal("0.15")),   # Higher error rate
+                ("r_attack_blocked", Decimal("0.15"))
+            ]
+        },
+        
+        # Power serving team - aggressive serves
+        "power_serving": {
+            "s_serve_ready": [
+                ("s_serve_ace", Decimal("0.15")),      # Very high ace rate
+                ("s_serve_error", Decimal("0.15")),    # High error rate too
+                ("s_serve_in_play", Decimal("0.70"))   # Lower in-play rate
+            ]
+        },
+        
+        # Consistent serving team - safe but effective
+        "consistent_serving": {
+            "s_serve_ready": [
+                ("s_serve_ace", Decimal("0.03")),      # Low ace rate
+                ("s_serve_error", Decimal("0.07")),    # Very low error rate
+                ("s_serve_in_play", Decimal("0.90"))   # Very high in-play rate
+            ]
+        },
+        
+        # Defensive receiving team - good digs, consistent play
+        "defensive_receiving": {
+            "r_dig_perfect": [
+                ("r_transition_set", Decimal("1.0"))   # Always transition to set
+            ],
+            "r_dig_good": [
+                ("r_transition_set", Decimal("0.85")), # High transition rate
+                ("r_transition_attack", Decimal("0.15"))
+            ],
+            "r_dig_poor": [
+                ("r_transition_set", Decimal("0.50")), # Better recovery than default
+                ("r_transition_attack", Decimal("0.35")),
+                ("r_attack_error", Decimal("0.15"))
+            ]
+        }
+    }
+    
+    return templates
+
+
 def create_beach_volleyball_state_machine() -> RallyStateMachine:
     """Create the complete beach volleyball rally state machine.
     
@@ -621,3 +901,139 @@ if __name__ == "__main__":
     print(f"Receiving team states: {len(receiving_states)}")
     
     print("\nDictionary-based state machine loaded successfully!")
+    
+    # Example usage of create_state_machine_from_teams function
+    print("\n" + "="*60)
+    print("TESTING CUSTOM TEAM PROBABILITIES FUNCTION")
+    print("="*60)
+    
+    # Example: Create custom team probabilities
+    example_serving_probs = {
+        "s_serve_ready": [
+            ("s_serve_ace", Decimal("0.08")),
+            ("s_serve_error", Decimal("0.12")),
+            ("s_serve_in_play", Decimal("0.80"))
+        ],
+        "s_set_perfect": [
+            ("s_attack_kill", Decimal("0.40")),  # Higher kill rate than default
+            ("s_attack_in_play", Decimal("0.45")),
+            ("s_attack_error", Decimal("0.05")),
+            ("s_attack_blocked", Decimal("0.10"))
+        ]
+    }
+    
+    example_receiving_probs = {
+        "r_reception_perfect": [
+            ("r_set_perfect", Decimal("0.80")),  # Higher perfect set rate
+            ("r_set_good", Decimal("0.15")),
+            ("r_set_error", Decimal("0.05"))
+        ],
+        "r_set_good": [
+            ("r_attack_kill", Decimal("0.30")),  # Higher kill rate from good sets
+            ("r_attack_in_play", Decimal("0.50")),
+            ("r_attack_error", Decimal("0.10")),
+            ("r_attack_blocked", Decimal("0.10"))
+        ]
+    }
+    
+    try:
+        # Create custom state machine
+        custom_sm = create_state_machine_from_teams(
+            example_serving_probs, 
+            example_receiving_probs
+        )
+        
+        print("✓ Custom state machine created successfully!")
+        print(f"  Total states: {len(custom_sm.get_all_states())}")
+        print(f"  Validation passed: {custom_sm.validate_probabilities()}")
+        
+        # Compare custom vs default probabilities for specific states
+        print("\nComparison of Custom vs Default Probabilities:")
+        print("-" * 50)
+        
+        default_sm = create_beach_volleyball_state_machine()
+        
+        test_states = ["s_serve_ready", "r_reception_perfect"]
+        for state in test_states:
+            if state in custom_sm.transitions and state in default_sm.transitions:
+                print(f"\nState: {state}")
+                print("  Custom transitions:")
+                for next_state, prob, action in custom_sm.get_next_states(state):
+                    print(f"    -> {next_state}: {prob}")
+                print("  Default transitions:")
+                for next_state, prob, action in default_sm.get_next_states(state):
+                    print(f"    -> {next_state}: {prob}")
+        
+        # Run a quick simulation with custom probabilities
+        print(f"\nSimulating rally with custom probabilities:")
+        custom_rally, custom_outcome = simulate_complete_rally(custom_sm)
+        print(f"  Rally length: {len(custom_rally)} steps")
+        print(f"  Outcome: {custom_outcome}")
+        print(f"  First 5 states: {' -> '.join(custom_rally[:5])}")
+        
+    except ValueError as e:
+        print(f"✗ Error creating custom state machine: {e}")
+    
+    # Test error handling with invalid probabilities
+    print(f"\nTesting error handling:")
+    print("-" * 30)
+    
+    # Test case 1: Probabilities don't sum to 1.0
+    invalid_serving_probs = {
+        "s_serve_ready": [
+            ("s_serve_ace", Decimal("0.05")),
+            ("s_serve_error", Decimal("0.10")),
+            ("s_serve_in_play", Decimal("0.80"))  # Sum = 0.95, not 1.0
+        ]
+    }
+    
+    try:
+        create_state_machine_from_teams(invalid_serving_probs, {})
+        print("✗ Should have caught invalid probabilities")
+    except ValueError as e:
+        print(f"✓ Correctly caught invalid probabilities: {str(e)[:80]}...")
+    
+    # Test case 2: Invalid state name (doesn't start with s_ or r_)
+    invalid_state_name = {
+        "invalid_state": [
+            ("s_serve_ace", Decimal("1.0"))
+        ]
+    }
+    
+    try:
+        create_state_machine_from_teams(invalid_state_name, {})
+        print("✗ Should have caught invalid state name")
+    except ValueError as e:
+        print(f"✓ Correctly caught invalid state name: {str(e)[:80]}...")
+    
+    # Test the template system
+    print(f"\nTesting Common State Templates:")
+    print("-" * 40)
+    
+    templates = get_common_state_templates()
+    print(f"Available templates: {list(templates.keys())}")
+    
+    # Create a state machine using templates
+    try:
+        elite_vs_novice_sm = create_state_machine_from_teams(
+            templates["elite_serving"],
+            templates["novice_receiving"]
+        )
+        print(f"✓ Elite vs Novice state machine created successfully!")
+        
+        # Run a quick comparison simulation
+        elite_rally, elite_outcome = simulate_complete_rally(elite_vs_novice_sm)
+        print(f"  Elite vs Novice rally: {len(elite_rally)} steps, {elite_outcome}")
+        
+        # Compare with power serving vs defensive receiving
+        power_vs_defense_sm = create_state_machine_from_teams(
+            templates["power_serving"],
+            templates["defensive_receiving"]
+        )
+        power_rally, power_outcome = simulate_complete_rally(power_vs_defense_sm)
+        print(f"  Power vs Defense rally: {len(power_rally)} steps, {power_outcome}")
+        
+    except Exception as e:
+        print(f"✗ Template test failed: {e}")
+    
+    print(f"\nCustom team probabilities function testing complete!")
