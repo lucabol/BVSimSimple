@@ -287,5 +287,52 @@ def run_elasticity_analysis(improvement_pct: float = 0.05, num_points: int = 100
     return results
 
 
+def test_consistency(num_trials=3, num_points=50000):
+    """Test consistency of elasticity results across multiple trials."""
+    print("TESTING RESULT CONSISTENCY")
+    print("=" * 50)
+    print(f"Running {num_trials} trials with {num_points:,} points each")
+    print()
+    
+    all_results = []
+    for trial in range(num_trials):
+        print(f"Trial {trial + 1}:")
+        results = run_elasticity_analysis(improvement_pct=0.05, num_points=num_points)
+        all_results.append(results)
+        print()
+    
+    # Analyze consistency
+    print("CONSISTENCY ANALYSIS")
+    print("=" * 30)
+    
+    if len(all_results) > 1:
+        # Get all stat names
+        stat_names = [stat for stat, _, _ in all_results[0]]
+        
+        for stat_name in stat_names:
+            elasticities = []
+            for trial_results in all_results:
+                for name, elast, _ in trial_results:
+                    if name == stat_name:
+                        elasticities.append(elast)
+                        break
+            
+            if elasticities:
+                mean_elast = sum(elasticities) / len(elasticities)
+                min_elast = min(elasticities)
+                max_elast = max(elasticities)
+                range_elast = max_elast - min_elast
+                
+                print(f"{stat_name:25} | Mean: {mean_elast:+.3f} | Range: {range_elast:.3f} | Values: {elasticities}")
+
+
 if __name__ == "__main__":
-    results = run_elasticity_analysis(improvement_pct=0.05, num_points=15000)  # Higher for statistical confidence
+    # Single run with high confidence
+    print("SINGLE HIGH-CONFIDENCE RUN")
+    print("=" * 50)
+    results = run_elasticity_analysis(improvement_pct=0.05, num_points=100000)  # Very high for stable results
+    
+    print("\n\n")
+    
+    # Consistency test with multiple smaller runs
+    test_consistency(num_trials=3, num_points=30000)
