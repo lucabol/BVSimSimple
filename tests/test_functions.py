@@ -10,7 +10,7 @@ from state_definitions import create_beach_volleyball_state_machine, get_winning
 from rally_simulator import simulate_rally_step, simulate_complete_rally
 from team_templates import get_common_state_templates
 from match_simulator import simulate_match_points
-from display import print_state_machine_summary
+from utils.display import print_state_machine_summary
 
 
 def test_state_machine_creation() -> None:

@@ -5,7 +5,7 @@
 """Main entry point for the beach volleyball state machine."""
 
 import argparse
-from test_functions import run_comprehensive_tests
+from tests.test_functions import run_comprehensive_tests
 
 
 def simulate_points(num_points: int) -> None:

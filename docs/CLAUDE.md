@@ -10,8 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 python main.py --test
 uv run main.py --test
 
-# Run individual test functions (modify test_functions.py as needed)
-python -c "from test_functions import test_state_machine_creation; test_state_machine_creation()"
+# Run individual test functions (modify tests/test_functions.py as needed)
+python -c "from tests.test_functions import test_state_machine_creation; test_state_machine_creation()"
 ```
 
 ### Basic Usage
@@ -20,8 +20,24 @@ python -c "from test_functions import test_state_machine_creation; test_state_ma
 python main.py
 uv run main.py
 
+# Simulate rally points
+python main.py --points 10
+uv run main.py --points 20
+
 # Direct module usage examples
 python -c "from state_definitions import create_beach_volleyball_state_machine; from rally_simulator import simulate_complete_rally; sm = create_beach_volleyball_state_machine(); print(simulate_complete_rally(sm))"
+```
+
+### Visualization and Analysis
+```bash
+# Text-based state machine analysis
+cd utils && uv run text_state_diagram.py
+
+# Interactive web visualization  
+cd utils && uv run interactive_visualization.py --plotly
+
+# Probability analysis
+cd utils && uv run visualize_state_machine.py --analyze
 ```
 
 ### Python Environment
@@ -77,11 +93,38 @@ This is a **beach volleyball rally state machine simulation** system with a func
 - **Team Convention**: Team A always serves first, Team B receives first
 - **Realistic Modeling**: Based on actual volleyball rules and outcome probabilities
 
+## Project Structure
+
+### Core Application Files (Root Directory)
+- `main.py`: Main entry point with CLI interface
+- `state_definitions.py`: Core state machine definition and probabilities
+- `state_machine.py`: State machine class and logic
+- `rally_simulator.py`: Single rally simulation functions
+- `match_simulator.py`: Match-level simulation with multiple points
+- `team_templates.py`: Predefined team skill templates
+- `state_machine_builder.py`: Custom state machine creation utilities
+- `types_.py`: Type definitions and constants
+- `BVRallyStateMachineDict.py`: Extended/comprehensive implementation
+
+### Utilities (`utils/` directory)
+- `text_state_diagram.py`: Comprehensive text-based analysis and flow diagrams
+- `visualize_state_machine.py`: Graphviz-based static visualizations
+- `interactive_visualization.py`: NetworkX and Plotly interactive graphs
+- `display.py`: Display utilities and formatting functions
+- Generated files (HTML visualizations, PNG graphs, etc.)
+
+### Tests (`tests/` directory)
+- `test_functions.py`: Comprehensive test suite and validation
+
+### Documentation (`docs/` directory)
+- `CLAUDE.md`: This file - development guidance
+- `README.md`: Project overview and usage instructions
+
 ## Key Files for Modification
 
 - `state_definitions.py`: Modify base probabilities or add new states
 - `team_templates.py`: Add new team skill templates
-- `test_functions.py`: Add new test scenarios or validation logic
+- `tests/test_functions.py`: Add new test scenarios or validation logic
 - `match_simulator.py`: Modify match-level simulation logic
 
 ## Validation and Testing
