@@ -46,12 +46,27 @@ def test_rally_simulation() -> None:
     next_state = simulate_rally_step(sm, "s_serve_ready")
     assert next_state is not None
     assert sm.is_valid_transition("s_serve_ready", next_state)
+    print(f"Single step: s_serve_ready -> {next_state}")
     
     # Test complete rally simulation
-    rally_sequence, outcome = simulate_complete_rally(sm)
-    assert len(rally_sequence) > 0
-    assert sm.is_terminal_state(rally_sequence[-1])
-    assert "wins" in outcome
+    print("\nComplete rally simulations (5 rallies):")
+    print("-" * 50)
+    
+    for i in range(5):
+        rally_sequence, outcome = simulate_complete_rally(sm)
+        
+        # Print the rally history
+        print(f"Rally {i+1}:")
+        print(f"  Sequence: {' -> '.join(rally_sequence)}")
+        print(f"  Length: {len(rally_sequence)} states")
+        print(f"  Outcome: {outcome}")
+        print(f"  Terminal state: {rally_sequence[-1]}")
+        print()
+        
+        # Run assertions
+        assert len(rally_sequence) > 0
+        assert sm.is_terminal_state(rally_sequence[-1])
+        assert "wins" in outcome
     
     print("Rally simulation test passed!")
 
@@ -64,8 +79,8 @@ def test_simulate_match_points() -> None:
     
     # Test with identical elite teams
     elite_win_pct = simulate_match_points(
-        templates["elite_serving"],
-        templates["elite_serving"],
+        templates["elite_team"],
+        templates["elite_team"],
         num_points=1000
     )
     
