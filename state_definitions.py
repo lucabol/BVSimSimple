@@ -17,9 +17,9 @@ def create_beach_volleyball_state_machine() -> RallyStateMachine:
     transitions: Dict[str, List[StateTransitionTuple]] = {
         # Initial serve - only 'ready' state we keep
         "s_serve_ready": [
-            ("s_serve_ace", Decimal("0.08"), ActionType.SERVE),
+            ("s_serve_ace", Decimal("0.04"), ActionType.SERVE),
             ("s_serve_error", Decimal("0.12"), ActionType.SERVE),
-            ("s_serve_in_play", Decimal("0.80"), ActionType.SERVE)
+            ("s_serve_in_play", Decimal("0.84"), ActionType.SERVE)
         ],
         
         # Reception directly from serve quality
@@ -31,43 +31,43 @@ def create_beach_volleyball_state_machine() -> RallyStateMachine:
         
         # Setting quality depends on reception quality
         "r_reception_perfect": [
-            ("r_set_error", Decimal("0.05"), ActionType.SET),
-            ("r_set_perfect", Decimal("0.60"), ActionType.SET),
+            ("r_set_error", Decimal("0.08"), ActionType.SET),
+            ("r_set_perfect", Decimal("0.57"), ActionType.SET),
             ("r_set_good", Decimal("0.35"), ActionType.SET)
         ],
         "r_reception_good": [
-            ("r_set_error", Decimal("0.15"), ActionType.SET),
-            ("r_set_perfect", Decimal("0.20"), ActionType.SET),
+            ("r_set_error", Decimal("0.18"), ActionType.SET),
+            ("r_set_perfect", Decimal("0.17"), ActionType.SET),
             ("r_set_good", Decimal("0.50"), ActionType.SET),
             ("r_set_poor", Decimal("0.15"), ActionType.SET)
         ],
         
         # Attack quality depends on set quality
         "r_set_perfect": [
-            ("r_attack_kill", Decimal("0.55"), ActionType.ATTACK),
-            ("r_attack_error", Decimal("0.05"), ActionType.ATTACK),
-            ("r_attack_blocked", Decimal("0.15"), ActionType.ATTACK),
-            ("r_attack_defended", Decimal("0.25"), ActionType.ATTACK)
-        ],
-        "r_set_good": [
-            ("r_attack_kill", Decimal("0.35"), ActionType.ATTACK),
+            ("r_attack_kill", Decimal("0.42"), ActionType.ATTACK),
             ("r_attack_error", Decimal("0.10"), ActionType.ATTACK),
-            ("r_attack_blocked", Decimal("0.25"), ActionType.ATTACK),
+            ("r_attack_blocked", Decimal("0.18"), ActionType.ATTACK),
             ("r_attack_defended", Decimal("0.30"), ActionType.ATTACK)
         ],
+        "r_set_good": [
+            ("r_attack_kill", Decimal("0.28"), ActionType.ATTACK),
+            ("r_attack_error", Decimal("0.12"), ActionType.ATTACK),
+            ("r_attack_blocked", Decimal("0.27"), ActionType.ATTACK),
+            ("r_attack_defended", Decimal("0.33"), ActionType.ATTACK)
+        ],
         "r_set_poor": [
-            ("r_attack_kill", Decimal("0.15"), ActionType.ATTACK),
-            ("r_attack_error", Decimal("0.25"), ActionType.ATTACK),
+            ("r_attack_kill", Decimal("0.12"), ActionType.ATTACK),
+            ("r_attack_error", Decimal("0.28"), ActionType.ATTACK),
             ("r_attack_blocked", Decimal("0.35"), ActionType.ATTACK),
             ("r_attack_defended", Decimal("0.25"), ActionType.ATTACK)
         ],
         
         # Defense outcomes depend on attack type
         "r_attack_blocked": [
-            ("s_block_kill", Decimal("0.30"), ActionType.BLOCK),
-            ("s_block_error", Decimal("0.20"), ActionType.BLOCK),
-            ("s_dig_perfect", Decimal("0.25"), ActionType.BLOCK),
-            ("s_dig_good", Decimal("0.25"), ActionType.BLOCK)
+            ("s_block_kill", Decimal("0.20"), ActionType.BLOCK),
+            ("s_block_error", Decimal("0.15"), ActionType.BLOCK),
+            ("s_dig_perfect", Decimal("0.35"), ActionType.BLOCK),
+            ("s_dig_good", Decimal("0.30"), ActionType.BLOCK)
         ],
         "r_attack_defended": [
             ("s_dig_error", Decimal("0.30"), ActionType.DIG),
@@ -77,43 +77,43 @@ def create_beach_volleyball_state_machine() -> RallyStateMachine:
         
         # Serving team setting quality depends on dig quality
         "s_dig_perfect": [
-            ("s_set_error", Decimal("0.05"), ActionType.SET),
-            ("s_set_perfect", Decimal("0.60"), ActionType.SET),
+            ("s_set_error", Decimal("0.08"), ActionType.SET),
+            ("s_set_perfect", Decimal("0.57"), ActionType.SET),
             ("s_set_good", Decimal("0.35"), ActionType.SET)
         ],
         "s_dig_good": [
-            ("s_set_error", Decimal("0.15"), ActionType.SET),
-            ("s_set_perfect", Decimal("0.20"), ActionType.SET),
+            ("s_set_error", Decimal("0.18"), ActionType.SET),
+            ("s_set_perfect", Decimal("0.17"), ActionType.SET),
             ("s_set_good", Decimal("0.50"), ActionType.SET),
             ("s_set_poor", Decimal("0.15"), ActionType.SET)
         ],
         
         # Serving team attack quality depends on set quality
         "s_set_perfect": [
-            ("s_attack_kill", Decimal("0.55"), ActionType.ATTACK),
-            ("s_attack_error", Decimal("0.05"), ActionType.ATTACK),
-            ("s_attack_blocked", Decimal("0.15"), ActionType.ATTACK),
-            ("s_attack_defended", Decimal("0.25"), ActionType.ATTACK)
-        ],
-        "s_set_good": [
-            ("s_attack_kill", Decimal("0.35"), ActionType.ATTACK),
+            ("s_attack_kill", Decimal("0.42"), ActionType.ATTACK),
             ("s_attack_error", Decimal("0.10"), ActionType.ATTACK),
-            ("s_attack_blocked", Decimal("0.25"), ActionType.ATTACK),
+            ("s_attack_blocked", Decimal("0.18"), ActionType.ATTACK),
             ("s_attack_defended", Decimal("0.30"), ActionType.ATTACK)
         ],
+        "s_set_good": [
+            ("s_attack_kill", Decimal("0.28"), ActionType.ATTACK),
+            ("s_attack_error", Decimal("0.12"), ActionType.ATTACK),
+            ("s_attack_blocked", Decimal("0.27"), ActionType.ATTACK),
+            ("s_attack_defended", Decimal("0.33"), ActionType.ATTACK)
+        ],
         "s_set_poor": [
-            ("s_attack_kill", Decimal("0.15"), ActionType.ATTACK),
-            ("s_attack_error", Decimal("0.25"), ActionType.ATTACK),
+            ("s_attack_kill", Decimal("0.12"), ActionType.ATTACK),
+            ("s_attack_error", Decimal("0.28"), ActionType.ATTACK),
             ("s_attack_blocked", Decimal("0.35"), ActionType.ATTACK),
             ("s_attack_defended", Decimal("0.25"), ActionType.ATTACK)
         ],
         
         # Receiving team defense depends on attack type
         "s_attack_blocked": [
-            ("r_block_kill", Decimal("0.30"), ActionType.BLOCK),
-            ("r_block_error", Decimal("0.20"), ActionType.BLOCK),
-            ("r_dig_perfect", Decimal("0.25"), ActionType.BLOCK),
-            ("r_dig_good", Decimal("0.25"), ActionType.BLOCK)
+            ("r_block_kill", Decimal("0.20"), ActionType.BLOCK),
+            ("r_block_error", Decimal("0.15"), ActionType.BLOCK),
+            ("r_dig_perfect", Decimal("0.35"), ActionType.BLOCK),
+            ("r_dig_good", Decimal("0.30"), ActionType.BLOCK)
         ],
         "s_attack_defended": [
             ("r_dig_error", Decimal("0.30"), ActionType.DIG),
