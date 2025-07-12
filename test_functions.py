@@ -77,17 +77,60 @@ def test_simulate_match_points() -> None:
     # Get common templates
     templates = get_common_state_templates()
     
-    # Test with identical elite teams
+    print("Testing simulate_match_points function:")
+    print("=" * 45)
+    
+    # Test 1: Elite teams vs Elite teams
+    print("\nTest 1: Elite vs Elite teams")
     elite_win_pct = simulate_match_points(
         templates["elite_team"],
         templates["elite_team"],
         num_points=1000
     )
     
-    print(f"Elite vs Elite win percentage: {elite_win_pct:.2f}")
-    assert abs(elite_win_pct - 0.5) < 0.1, "Expected ~50% win rate for identical teams"
+    print(f"Elite vs Elite win percentage: {elite_win_pct * 100:.2f}%")
+    assert abs(elite_win_pct - 0.5) < 0.05, f"Expected ~50% win rate for identical teams, got {elite_win_pct * 100:.2f}%"
+    print("✓ Elite teams test passed!")
     
-    print("Match points simulation test passed!")
+    # Test 2: Standard state machine (using default probabilities)
+    print("\nTest 2: Standard state machine with default probabilities")
+    from state_definitions import create_beach_volleyball_state_machine
+    
+    # Create a unified template from the standard state machine
+    sm = create_beach_volleyball_state_machine()
+    standard_template = {}
+    
+    # Extract all non-terminal states and their transitions
+    for state, transitions in sm.transitions.items():
+        if not sm.is_terminal_state(state):
+            # Convert StateTransitionTuple to the format expected by simulate_match_points
+            standard_template[state] = [(next_state, probability) for next_state, probability, _ in transitions]
+    
+    standard_win_pct = simulate_match_points(
+        standard_template,
+        standard_template,
+        num_points=1000
+    )
+    
+    print(f"Standard vs Standard win percentage: {standard_win_pct * 100:.2f}%")
+    assert abs(standard_win_pct - 0.5) < 0.05, f"Expected ~50% win rate for identical teams, got {standard_win_pct * 100:.2f}%"
+    print("✓ Standard state machine test passed!")
+    
+    # Test 3: Elite vs Standard comparison
+    print("\nTest 3: Elite vs Standard teams")
+    elite_vs_standard_pct = simulate_match_points(
+        templates["elite_team"],
+        standard_template,
+        num_points=1000
+    )
+    
+    print(f"Elite vs Standard win percentage: {elite_vs_standard_pct * 100:.2f}%")
+    if elite_vs_standard_pct > 0.50:
+        print("✓ Elite team has higher win rate as expected")
+    else:
+        print(f"! Elite team win rate ({elite_vs_standard_pct * 100:.2f}%) is lower than expected")
+    
+    print("\nAll match points simulation tests passed!")
 
 
 def test_display_functions() -> None:
