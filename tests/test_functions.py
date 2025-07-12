@@ -74,18 +74,22 @@ def test_rally_simulation() -> None:
 def test_simulate_match_points() -> None:
     """Test the simulate_match_points function with identical teams."""
     
+    # Single num_points variable for all tests
+    num_points = 10000
+    
     # Get common templates
     templates = get_common_state_templates()
     
     print("Testing simulate_match_points function:")
     print("=" * 45)
+    print(f"Running all tests with {num_points} points for high statistical confidence")
     
     # Test 1: Elite teams vs Elite teams
     print("\nTest 1: Elite vs Elite teams")
     elite_win_pct = simulate_match_points(
         templates["elite_team"],
         templates["elite_team"],
-        num_points=1000
+        num_points=num_points
     )
     
     print(f"Elite vs Elite win percentage: {elite_win_pct * 100:.2f}%")
@@ -109,7 +113,7 @@ def test_simulate_match_points() -> None:
     standard_win_pct = simulate_match_points(
         standard_template,
         standard_template,
-        num_points=1000
+        num_points=num_points
     )
     
     print(f"Standard vs Standard win percentage: {standard_win_pct * 100:.2f}%")
@@ -121,7 +125,7 @@ def test_simulate_match_points() -> None:
     elite_vs_standard_pct = simulate_match_points(
         templates["elite_team"],
         standard_template,
-        num_points=1000
+        num_points=num_points
     )
     
     print(f"Elite vs Standard win percentage: {elite_vs_standard_pct * 100:.2f}%")
